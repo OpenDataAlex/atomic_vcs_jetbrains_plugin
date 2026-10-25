@@ -1,11 +1,13 @@
 <idea-plugin>
-    <id>dev.atomic</id>
-    <name>Atomic VCS</name>
-    <vendor url="https://docs.atomic.dev">Atomic</vendor>
+    <id>com.bluefiredatasolutions.com.atomic-vcs-integration</id>
+    <name>Atomic VCS Support</name>
+    <vendor url="https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin">Blue Fire Data Solutions</vendor>
 
     <description><![CDATA[
-    Plugin adding support for the Atomic version control system to PyCharm and RustRover.
-    Provides patch-theory version control, views, Blake3 hash tracking, and AI integration via MCP.
+    Adds support for the <a href="https://docs.atomic.dev">Atomic</a> version control system to JetBrains IDEs.<br>
+    Provides file statuses, recording changes from the Commit tool window, diffs, the change graph in the Log tab,
+    AI-agent provenance and MCP integration. Requires the <code>atomic</code> CLI.<br>
+    <em>This is an independent community plugin and is not affiliated with or endorsed by atomic.dev.</em>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -17,7 +19,6 @@
         <logProvider implementation="dev.atomic.vcs.log.AtomicLogProvider"/>
         <vcsRepositoryInitializer implementation="dev.atomic.vcs.AtomicRepositoryInitializer"/>
 
-        <projectService serviceImplementation="dev.atomic.vcs.settings.AtomicSettings"/>
         <projectConfigurable
                 parentId="project.propVCSSupport.Mappings"
                 groupWeight="-500"

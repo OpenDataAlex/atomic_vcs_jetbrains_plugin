@@ -107,13 +107,15 @@ kover {
 
 intellijPlatform {
     pluginConfiguration {
-        id = "dev.atomic"
-        name = "Atomic VCS"
+        id = "com.bluefiredatasolutions.com.atomic-vcs-integration"
+        name = "Atomic VCS Support"
         version = "1.0.0-SNAPSHOT"
-        description = "Atomic version control system integration for PyCharm and RustRover"
+        description = "Adds support for the Atomic version control system to JetBrains IDEs: file statuses, recording changes, " +
+            "diffs, the change graph in the Log tab, AI-agent provenance and MCP integration. Requires the atomic CLI. " +
+            "This is an independent community plugin and is not affiliated with or endorsed by atomic.dev."
         vendor {
-            name = "Atomic"
-            url = "https://docs.atomic.dev"
+            name = "Blue Fire Data Solutions"
+            url = "https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin"
         }
         ideaVersion {
             sinceBuild = "251"
