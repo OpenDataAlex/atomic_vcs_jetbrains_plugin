@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:AtomicParsers.kt$AtomicParsers$currentSection != null &amp;&amp; (l.startsWith("-") || l.startsWith("*") || (!l.contains(":") &amp;&amp; !l.matches(Regex("^[A-Z?].*"))))</ID>
+    <ID>ComplexCondition:AtomicParsers.kt$AtomicParsers$hash.isNotEmpty() &amp;&amp; !l.startsWith("diff") &amp;&amp; !l.startsWith("---") &amp;&amp; !l.startsWith("+++")</ID>
+    <ID>ComplexCondition:AtomicParsers.kt$AtomicParsers$l.startsWith("Change ") || l.startsWith("Record ") || l.startsWith("commit ") || l.startsWith("patch ")</ID>
+    <ID>ComplexCondition:AtomicParsers.kt$AtomicParsers$l.startsWith("M ") || l.startsWith("A ") || l.startsWith("D ") || l.startsWith("C ")</ID>
+    <ID>CyclomaticComplexMethod:AtomicParsers.kt$AtomicParsers$fun parseChange(output: String, repoRoot: Path): AtomicChangeDetail</ID>
+    <ID>CyclomaticComplexMethod:AtomicParsers.kt$AtomicParsers$fun parseDiff(rawDiff: String, repoRoot: Path): AtomicDiffResult</ID>
+    <ID>CyclomaticComplexMethod:AtomicParsers.kt$AtomicParsers$fun parseRecord(output: String, repoRoot: Path): AtomicRecordResult</ID>
+    <ID>CyclomaticComplexMethod:AtomicParsers.kt$AtomicParsers$fun parseStatus(output: String, repoRoot: Path): AtomicStatusResult</ID>
+    <ID>CyclomaticComplexMethod:RecordedContentReconstructor.kt$RecordedContentReconstructor$fun reconstruct(diffJson: String, current: String?): String?</ID>
+    <ID>LongMethod:AtomicParsers.kt$AtomicParsers$fun parseStatus(output: String, repoRoot: Path): AtomicStatusResult</ID>
+    <ID>LoopWithTooManyJumpStatements:AtomicParsers.kt$AtomicParsers$for</ID>
+    <ID>NestedBlockDepth:AtomicCliImpl.kt$AtomicCliImpl$override suspend fun findExecutable(customPath: String?): Path?</ID>
+    <ID>NestedBlockDepth:AtomicParsers.kt$AtomicParsers$fun parseStatus(output: String, repoRoot: Path): AtomicStatusResult</ID>
+    <ID>NestedBlockDepth:RecordedContentReconstructor.kt$RecordedContentReconstructor$fun reconstruct(diffJson: String, current: String?): String?</ID>
+    <ID>ReturnCount:RecordedContentReconstructor.kt$RecordedContentReconstructor$fun reconstruct(diffJson: String, current: String?): String?</ID>
+    <ID>TooManyFunctions:AtomicCliImpl.kt$AtomicCliImpl : AtomicCli</ID>
+  </CurrentIssues>
+</SmellBaseline>

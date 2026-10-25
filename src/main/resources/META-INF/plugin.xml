@@ -1,0 +1,58 @@
+<idea-plugin>
+    <id>dev.atomic</id>
+    <name>Atomic VCS</name>
+    <vendor url="https://docs.atomic.dev">Atomic</vendor>
+
+    <description><![CDATA[
+    Plugin adding support for the Atomic version control system to PyCharm and RustRover.
+    Provides patch-theory version control, views, Blake3 hash tracking, and AI integration via MCP.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.vcs</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <vcs name="Atomic" vcsClass="dev.atomic.vcs.AtomicVcs" displayName="Atomic" administrativeAreaName=".atomic" areChildrenValidMappings="true"/>
+        <vcsRootChecker implementation="dev.atomic.vcs.AtomicVcsRootChecker"/>
+        <logProvider implementation="dev.atomic.vcs.log.AtomicLogProvider"/>
+        <vcsRepositoryInitializer implementation="dev.atomic.vcs.AtomicRepositoryInitializer"/>
+
+        <projectService serviceImplementation="dev.atomic.vcs.settings.AtomicSettings"/>
+        <projectConfigurable
+                parentId="project.propVCSSupport.Mappings"
+                groupWeight="-500"
+                instance="dev.atomic.vcs.settings.AtomicSettingsConfigurable"
+                id="dev.atomic.vcs.settings.AtomicSettingsConfigurable"
+                displayName="Atomic"/>
+
+        <statusBarWidgetFactory implementation="dev.atomic.vcs.ui.AtomicViewStatusBarWidgetFactory" id="AtomicViewStatusBarWidget"/>
+        <notificationGroup id="Atomic VCS Notifications" displayType="BALLOON"/>
+
+        <postStartupActivity implementation="dev.atomic.vcs.AtomicVcsStartupActivity"/>
+        <postStartupActivity implementation="dev.atomic.ai.mcp.McpRegistrationActivity"/>
+    </extensions>
+
+    <applicationListeners>
+        <listener class="dev.atomic.ai.agent.AtomicAiVfsListener"
+                  topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+    </applicationListeners>
+
+    <actions>
+        <action id="Atomic.Init" class="dev.atomic.vcs.actions.AtomicInitAction" text="Create Atomic Repository..." description="Create an Atomic repository in a specified directory">
+            <add-to-group group-id="Vcs.Import"/>
+            <add-to-group group-id="Vcs.Operations.Popup.NonVcsAware" relative-to-action="Start.Use.Vcs" anchor="before"/>
+            <add-to-group group-id="Vcs.ToolWindow.CreateRepository"/>
+        </action>
+        <action id="Atomic.Refresh" class="dev.atomic.vcs.actions.AtomicRefreshStatusAction" text="Refresh Status" description="Re-query the Atomic working copy status"/>
+        <action id="Atomic.Record" class="dev.atomic.vcs.actions.AtomicRecordAction" text="Record Changes..." description="Record the selected changes as an Atomic change"/>
+        <action id="Atomic.Unrecord" class="dev.atomic.vcs.actions.AtomicUnrecordAction" text="Unrecord Latest Change..." description="Unrecord the latest patch from the current view"/>
+
+        <group id="Atomic.Menu" class="dev.atomic.vcs.actions.AtomicMenuGroup" popup="true" text="Atomic" description="Atomic version control operations">
+            <reference ref="Atomic.Refresh"/>
+            <reference ref="Atomic.Record"/>
+            <separator/>
+            <reference ref="Atomic.Unrecord"/>
+            <add-to-group group-id="VcsGroups" anchor="last"/>
+        </group>
+    </actions>
+</idea-plugin>

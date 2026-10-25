@@ -1,0 +1,50 @@
+build:
+  maxIssues: 0
+
+style:
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    maxLineLength: 160
+  ReturnCount:
+    max: 4
+  ThrowsCount:
+    max: 3
+  WildcardImport:
+    active: false
+  UnusedPrivateMember:
+    active: true
+
+complexity:
+  LongMethod:
+    threshold: 80
+  CyclomaticComplexMethod:
+    threshold: 20
+  TooManyFunctions:
+    thresholdInFiles: 25
+    thresholdInClasses: 25
+    thresholdInObjects: 25
+    thresholdInInterfaces: 25
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 12
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  SwallowedException:
+    active: false
+
+empty-blocks:
+  EmptyFunctionBlock:
+    ignoreOverridden: true
+
+naming:
+  # Field names mirror the JSON emitted by the atomic CLI (snake_case).
+  ConstructorParameterNaming:
+    parameterPattern: '[a-z][A-Za-z0-9_]*'
+  FunctionNaming:
+    ignoreAnnotated:
+      - Test

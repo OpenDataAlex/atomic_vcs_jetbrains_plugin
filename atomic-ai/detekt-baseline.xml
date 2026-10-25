@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AtomicMcpServer.kt$AtomicMcpServer$private suspend fun executeTool(name: String, args: JsonObject): McpToolCallResult</ID>
+    <ID>LongMethod:AtomicMcpServer.kt$AtomicMcpServer$private fun listTools(): List&lt;McpToolDefinition></ID>
+    <ID>LongMethod:AtomicMcpServer.kt$AtomicMcpServer$private suspend fun executeTool(name: String, args: JsonObject): McpToolCallResult</ID>
+    <ID>ThrowsCount:AtomicMcpServer.kt$AtomicMcpServer$private suspend fun executeTool(name: String, args: JsonObject): McpToolCallResult</ID>
+  </CurrentIssues>
+</SmellBaseline>
