@@ -100,6 +100,21 @@ interface AtomicCli {
      */
     suspend fun vaultContext(repoPath: Path, intent: String? = null): String
 
+    /** Searches vault knowledge-graph nodes by name and metadata. */
+    suspend fun vaultQuerySearch(repoPath: Path, query: String, type: String? = null, limit: Int = 50): KgSearchResult
+
+    /** Searches indexed source code for a pattern. */
+    suspend fun vaultQueryCode(repoPath: Path, pattern: String, pathGlob: String? = null, fileType: String? = null): List<KgCodeHit>
+
+    /** Loads the nodes and edges adjacent to a CLI-provided node ID. */
+    suspend fun vaultQueryNeighbors(repoPath: Path, nodeId: String): KgNeighborsResult
+
+    /** Lists entities extracted from a file. */
+    suspend fun vaultQueryEntities(repoPath: Path, filePath: Path): KgSearchResult
+
+    /** Enriches the repository knowledge graph and source index. */
+    suspend fun vaultQueryEnrich(repoPath: Path)
+
     /**
      * Queries provenance metadata for a change hash.
      */

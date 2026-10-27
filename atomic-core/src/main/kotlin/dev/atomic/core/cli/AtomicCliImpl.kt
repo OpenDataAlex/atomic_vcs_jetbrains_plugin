@@ -317,6 +317,43 @@ class AtomicCliImpl(
         return result.stdout.ifEmpty { result.stderr }
     }
 
+    override suspend fun vaultQuerySearch(repoPath: Path, query: String, type: String?, limit: Int): KgSearchResult {
+        val args = mutableListOf("vault", "query", "search", query, "-k", limit.toString())
+        if (!type.isNullOrBlank()) {
+            args.addAll(listOf("-t", type))
+        }
+        val output = jsonOrPlain(repoPath, args + FLAG_JSON, args)
+        return AtomicParsers.parseVaultQuerySearch(output, repoPath)
+    }
+
+    override suspend fun vaultQueryCode(repoPath: Path, pattern: String, pathGlob: String?, fileType: String?): List<KgCodeHit> {
+        val args = mutableListOf("vault", "query", "code", pattern)
+        if (!pathGlob.isNullOrBlank()) {
+            args.addAll(listOf("-g", pathGlob))
+        }
+        if (!fileType.isNullOrBlank()) {
+            args.addAll(listOf("-t", fileType))
+        }
+        val output = jsonOrPlain(repoPath, args + FLAG_JSON, args)
+        return AtomicParsers.parseVaultQueryCode(output, repoPath)
+    }
+
+    override suspend fun vaultQueryNeighbors(repoPath: Path, nodeId: String): KgNeighborsResult {
+        val args = listOf("vault", "query", "neighbors", nodeId)
+        val output = jsonOrPlain(repoPath, args + FLAG_JSON, args)
+        return AtomicParsers.parseVaultQueryNeighbors(output, repoPath, nodeId)
+    }
+
+    override suspend fun vaultQueryEntities(repoPath: Path, filePath: Path): KgSearchResult {
+        val args = listOf("vault", "query", "entities", toRepoRelative(repoPath, filePath))
+        val output = jsonOrPlain(repoPath, args + FLAG_JSON, args)
+        return AtomicParsers.parseVaultQueryEntities(output, repoPath)
+    }
+
+    override suspend fun vaultQueryEnrich(repoPath: Path) {
+        runCommand(repoPath, listOf("vault", "query", "enrich"), timeoutMillis = 300_000L)
+    }
+
     override suspend fun provenance(repoPath: Path, changeHash: String): AtomicProvenanceDetail {
         val output = jsonOrPlain(repoPath, listOf("provenance", changeHash, FLAG_JSON), listOf("provenance", changeHash))
         return AtomicParsers.parseProvenance(output, changeHash)

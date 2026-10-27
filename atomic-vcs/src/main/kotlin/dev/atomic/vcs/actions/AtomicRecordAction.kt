@@ -2,9 +2,9 @@ package dev.atomic.vcs.actions
 
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.ActionWrapperUtil
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.ex.ActionUtil
 
 /**
  * "Record Changes..." – Atomic's term for committing. Opens the platform's Commit tool window / dialog.
@@ -21,7 +21,7 @@ class AtomicRecordAction : AnAction() {
             e.presentation.isEnabledAndVisible = false
             return
         }
-        target.update(e)
+        ActionWrapperUtil.update(e, this, target)
         // The delegate's update may have rewritten the text; keep ours.
         e.presentation.text = "Record Changes..."
         e.presentation.description = "Record the selected changes as an Atomic change"
@@ -29,6 +29,6 @@ class AtomicRecordAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val target = delegate ?: return
-        ActionUtil.performActionDumbAwareWithCallbacks(target, e)
+        ActionWrapperUtil.actionPerformed(e, this, target)
     }
 }

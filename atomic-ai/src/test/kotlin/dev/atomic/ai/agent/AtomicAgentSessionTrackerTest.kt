@@ -3,11 +3,13 @@ package dev.atomic.ai.agent
 import dev.atomic.ai.mcp.AtomicMcpServer
 import dev.atomic.core.cli.AtomicCliImpl
 import dev.atomic.core.process.ProcessResult
+import dev.atomic.core.process.ProcessRunner
 import dev.atomic.core.test.MockProcessRunner
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 import java.nio.file.Paths
 
 class AtomicAgentSessionTrackerTest {
@@ -66,6 +68,61 @@ class AtomicAgentSessionTrackerTest {
         val endResult = tracker.endSession("session-fallback", repoRoot)
         assertTrue(endResult.fallbackRecorded)
         assertTrue(mockRunner.recordedCommands.any { it.contains("record") })
+    }
+
+    @Test
+    fun endAllSessionsRestoresViewsAndClearsTracker() = runTest {
+        val mockRunner = MockProcessRunner()
+        mockRunner.onCommand("status", ProcessResult(0, """{"view":"main","modified":[]}""", ""))
+        mockRunner.onCommand("attest", ProcessResult(0, """{"hash":"attest-session","status":"verified"}""", ""))
+        val tracker = AtomicAgentSessionTracker(cli = AtomicCliImpl(processRunner = mockRunner))
+
+        tracker.startSession("session-one", repoRoot.resolve("one"))
+        tracker.startSession("session-two", repoRoot.resolve("two"))
+
+        val results = tracker.endAllSessions()
+
+        assertEquals(setOf("session-one", "session-two"), results.map { it.sessionId }.toSet())
+        assertEquals(setOf("main"), results.map { it.restoredView }.toSet())
+        assertTrue(tracker.getActiveSessions().isEmpty())
+        assertTrue(mockRunner.recordedCommands.any { it.contains("switch") && it.contains("main") })
+    }
+
+    @Test
+    fun endAllSessionsContinuesWhenOneSessionStatusFails() = runTest {
+        val failingRoot = repoRoot.resolve("failing")
+        val processRunner = object : ProcessRunner {
+            private var failingRootStatusCalls = 0
+            val recordedCommands = mutableListOf<List<String>>()
+
+            override suspend fun runProcess(
+                command: List<String>,
+                workingDir: Path?,
+                timeoutMillis: Long,
+                env: Map<String, String>,
+            ): ProcessResult {
+                recordedCommands.add(command)
+                if ("status" in command && workingDir == failingRoot) {
+                    failingRootStatusCalls++
+                    if (failingRootStatusCalls > 1) return ProcessResult(1, "", "status failed")
+                }
+                return when {
+                    "status" in command -> ProcessResult(0, """{"view":"main","modified":[]}""", "")
+                    "attest" in command -> ProcessResult(0, """{"hash":"attest-session","status":"verified"}""", "")
+                    else -> ProcessResult(0, "", "")
+                }
+            }
+        }
+        val tracker = AtomicAgentSessionTracker(cli = AtomicCliImpl(processRunner = processRunner))
+
+        tracker.startSession("session-failing", failingRoot)
+        tracker.startSession("session-healthy", repoRoot.resolve("healthy"))
+
+        val results = tracker.endAllSessions()
+
+        assertEquals(setOf("session-failing", "session-healthy"), results.map { it.sessionId }.toSet())
+        assertTrue(tracker.getActiveSessions().isEmpty())
+        assertTrue(processRunner.recordedCommands.any { it.contains("switch") && it.contains("main") })
     }
 
     @Test

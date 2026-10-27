@@ -1,7 +1,6 @@
 package dev.atomic.vcs.log
 
 import com.intellij.vcs.log.Hash
-import com.intellij.vcs.log.impl.HashImpl
 
 /**
  * Atomic identifies changes by base32 encoded Blake3 hashes (52 characters), but the IDE's log storage
@@ -12,8 +11,6 @@ object AtomicHashes {
 
     /** Marks a hex string that is not a decoded base32 value but the UTF-8 bytes of an arbitrary identifier. */
     private const val RAW_MARKER = "ffffffffffff"
-
-    fun toIdeHash(atomicHash: String): Hash = HashImpl.build(toHex(atomicHash))
 
     fun toAtomic(hash: Hash): String = fromHex(hash.asString())
 

@@ -1,6 +1,8 @@
 package dev.atomic.core.parser
 
 import dev.atomic.core.model.AtomicChangeType
+import dev.atomic.core.model.KgCodeHit
+import dev.atomic.core.model.KgEdge
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
@@ -288,6 +290,53 @@ class AtomicParsersTest {
         assertEquals(42, query.matches[0].line)
         assertEquals("pub fn validate_token() -> bool", query.matches[0].snippet)
         assertEquals(0.95, query.matches[0].score)
+    }
+
+    @Test
+    fun testParseVaultQuerySearchAndNeighborsJson() {
+        val search = AtomicParsers.parseVaultQuerySearch(
+            """
+                {"results":{"nodes":[
+                  {"id":"entity:src/auth.rs:verify_token:42","kind":"entity","name":"verify_token","path":"src/auth.rs","line":42},
+                  {"id":"file:src/auth.rs","type":"file","title":"Authentication"}
+                ]}}
+            """.trimIndent(),
+            repoRoot,
+        )
+        assertEquals(2, search.nodes.size)
+        assertEquals("entity:src/auth.rs:verify_token:42", search.nodes[0].id)
+        assertEquals("entity", search.nodes[0].type)
+        assertEquals(repoRoot.resolve("src/auth.rs"), search.nodes[0].path)
+        assertEquals(42, search.nodes[0].line)
+        assertEquals(repoRoot.resolve("src/auth.rs"), search.nodes[1].path)
+
+        val neighbors = AtomicParsers.parseVaultQueryNeighbors(
+            """
+                {
+                  "center_id":"entity:src/auth.rs:verify_token:42",
+                  "nodes":[{"id":"file:src/auth.rs","kind":"file","name":"Authentication"}],
+                  "edges":[{"from":{"id":"entity:src/auth.rs:verify_token:42"},"to":"file:src/auth.rs","relation":"DEFINED_IN"}]
+                }
+            """.trimIndent(),
+            repoRoot,
+            "entity:src/auth.rs:verify_token:42",
+        )
+        assertEquals("entity:src/auth.rs:verify_token:42", neighbors.centerId)
+        assertEquals("file:src/auth.rs", neighbors.nodes.single().id)
+        assertEquals(KgEdge("entity:src/auth.rs:verify_token:42", "file:src/auth.rs", "DEFINED_IN"), neighbors.edges.single())
+    }
+
+    @Test
+    fun testParseVaultQueryCodeJsonAndPlainSearch() {
+        val hits = AtomicParsers.parseVaultQueryCode(
+            """{"results":[{"file":"src/auth.rs","line_number":12,"content":"verify_token();"}]}""",
+            repoRoot,
+        )
+        assertEquals(KgCodeHit(repoRoot.resolve("src/auth.rs"), 12, "verify_token();"), hits.single())
+
+        val search = AtomicParsers.parseVaultQuerySearch("[entity] entity:src/auth.rs:verify_token:12 Checks token", repoRoot)
+        assertEquals("entity:src/auth.rs:verify_token:12", search.nodes.single().id)
+        assertEquals("Checks token", search.nodes.single().name)
     }
 
     @Test

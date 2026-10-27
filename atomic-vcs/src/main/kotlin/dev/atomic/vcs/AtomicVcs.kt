@@ -17,7 +17,6 @@ import dev.atomic.vcs.history.AtomicHistoryProvider
 import dev.atomic.vcs.rollback.AtomicRollbackEnvironment
 import dev.atomic.vcs.settings.AtomicSettings
 
-@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class AtomicVcs(project: Project) : AbstractVcs(project, NAME) {
     val cli: AtomicCli = AtomicCliImpl(executablePathProvider = { AtomicSettings.getInstance(project).executablePath })
 
@@ -44,12 +43,6 @@ class AtomicVcs(project: Project) : AbstractVcs(project, NAME) {
     override fun getRollbackEnvironment(): RollbackEnvironment? = if (project.isDefault) null else rollbackEnv
 
     override fun getVcsHistoryProvider(): VcsHistoryProvider? = if (project.isDefault) null else historyProv
-
-    override fun isVersionedDirectory(dir: com.intellij.openapi.vfs.VirtualFile): Boolean {
-        val dotAtomic = dir.findChild(DOT_DIR)
-        if (dotAtomic != null && dotAtomic.isDirectory) return true
-        return java.io.File(dir.path, DOT_DIR).isDirectory
-    }
 
     override fun arePartialChangelistsSupported(): Boolean = false
 

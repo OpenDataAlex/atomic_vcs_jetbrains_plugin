@@ -12,6 +12,7 @@ import com.intellij.vcs.log.TimedVcsCommit
 import com.intellij.vcs.log.VcsCommitMetadata
 import com.intellij.vcs.log.VcsFullCommitDetails
 import com.intellij.vcs.log.VcsLogFilterCollection
+import com.intellij.vcs.log.VcsLogObjectsFactory
 import com.intellij.vcs.log.VcsLogProperties
 import com.intellij.vcs.log.VcsLogProvider
 import com.intellij.vcs.log.VcsLogRefManager
@@ -19,10 +20,6 @@ import com.intellij.vcs.log.VcsLogRefresher
 import com.intellij.vcs.log.VcsRef
 import com.intellij.vcs.log.VcsUser
 import com.intellij.vcs.log.graph.PermanentGraph
-import com.intellij.vcs.log.impl.TimedVcsCommitImpl
-import com.intellij.vcs.log.impl.VcsCommitMetadataImpl
-import com.intellij.vcs.log.impl.VcsRefImpl
-import com.intellij.vcs.log.impl.VcsUserImpl
 import com.intellij.vcsUtil.VcsUtil
 import dev.atomic.core.cli.AtomicCliException
 import dev.atomic.core.format.ProvenanceFormatter
@@ -80,7 +77,10 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
 
     override fun readAllHashes(root: VirtualFile, commitConsumer: Consumer<in TimedVcsCommit>): VcsLogProvider.LogData {
         val snapshot = snapshot(root)
-        snapshot.changes.forEach { commitConsumer.consume(TimedVcsCommitImpl(hash(it.hash), parents(it), millis(it.timestamp))) }
+        val factory = objectsFactory()
+        snapshot.changes.forEach {
+            commitConsumer.consume(factory.createTimedCommit(hash(it.hash), parents(it), millis(it.timestamp)))
+        }
         val refs = refs(root, snapshot)
         val users = snapshot.changes.map { user(it) }.toSet()
         return object : VcsLogProvider.LogData {
@@ -112,7 +112,7 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
             val fullMessage = if (aiSection == null) summary.message else summary.message.trimEnd() + "\n\n" + aiSection
             val author = summary.author.ifBlank { detail.author }
             val fullSummary = summary.copy(message = fullMessage, author = author)
-            consumer.consume(FullDetails(root, fullSummary, changesOf(summary, detail)))
+            consumer.consume(FullDetails(metadata(root, fullSummary), changesOf(summary, detail)))
         }
     }
 
@@ -150,7 +150,8 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
         val textFilter = filterCollection.get(VcsLogFilterCollection.TEXT_FILTER)
         val matching = snapshot(root).changes.filter { textFilter == null || textFilter.matches(it.message) }
         val limited = if (maxCount > 0) matching.take(maxCount) else matching
-        return limited.map { TimedVcsCommitImpl(hash(it.hash), parents(it), millis(it.timestamp)) }
+        val factory = objectsFactory()
+        return limited.map { factory.createTimedCommit(hash(it.hash), parents(it), millis(it.timestamp)) }
     }
 
     override fun getCurrentUser(root: VirtualFile): VcsUser? = null
@@ -206,9 +207,11 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
     }
 
     private fun refs(root: VirtualFile, snapshot: Snapshot): Set<VcsRef> =
-        snapshot.heads.map { (name, head) -> VcsRefImpl(hash(head), name, AtomicViewRefType, root) as VcsRef }.toSet()
+        snapshot.heads.map { (name, head) -> objectsFactory().createRef(hash(head), name, AtomicViewRefType, root) }.toSet()
 
-    private fun hash(atomicHash: String): Hash = AtomicHashes.toIdeHash(atomicHash)
+    private fun objectsFactory(): VcsLogObjectsFactory = project.getService(VcsLogObjectsFactory::class.java)
+
+    private fun hash(atomicHash: String): Hash = objectsFactory().createHash(AtomicHashes.toHex(atomicHash))
 
     private fun parents(change: AtomicChangeSummary): List<Hash> = change.dependencies.map { hash(it) }
 
@@ -219,12 +222,12 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
             0L
         }
 
-    private fun user(change: AtomicChangeSummary): VcsUser = VcsUserImpl(change.author.ifBlank { "Atomic" }, "")
+    private fun user(change: AtomicChangeSummary): VcsUser = objectsFactory().createUser(change.author.ifBlank { "Atomic" }, "")
 
     private fun metadata(root: VirtualFile, change: AtomicChangeSummary): VcsCommitMetadata {
         val time = millis(change.timestamp)
         val user = user(change)
-        return VcsCommitMetadataImpl(
+        return objectsFactory().createCommitMetadata(
             hash(change.hash),
             parents(change),
             time,
@@ -233,32 +236,20 @@ class AtomicLogProvider(private val project: Project) : VcsLogProvider {
                 .lineSequence()
                 .firstOrNull()
                 .orEmpty(),
-            user,
+            user.name,
+            user.email,
             change.message,
-            user,
+            user.name,
+            user.email,
             time,
         )
     }
 
-    private inner class FullDetails(
-        root: VirtualFile,
-        change: AtomicChangeSummary,
+    private class FullDetails(
+        metadata: VcsCommitMetadata,
         private val changes: List<Change>,
-    ) : VcsCommitMetadataImpl(
-            hash(change.hash),
-            parents(change),
-            millis(change.timestamp),
-            root,
-            change.message
-                .lineSequence()
-                .firstOrNull()
-                .orEmpty(),
-            user(change),
-            change.message,
-            user(change),
-            millis(change.timestamp),
-        ),
-        VcsFullCommitDetails {
+    ) : VcsFullCommitDetails,
+        VcsCommitMetadata by metadata {
         override fun getChanges(): Collection<Change> = changes
 
         override fun getChanges(parent: Int): Collection<Change> = changes

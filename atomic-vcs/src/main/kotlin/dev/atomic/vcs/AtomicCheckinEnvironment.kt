@@ -34,9 +34,6 @@ class AtomicCheckinEnvironment(
         commitContext: CommitContext,
     ): RefreshableOnComponent? = null
 
-    @Suppress("OVERRIDE_DEPRECATION") // still called by older platform code paths
-    override fun getDefaultMessageFor(filesToCheckin: Array<out FilePath>): String? = null
-
     // The platform's commit workflow calls this overload; the default implementation of it ends up as a silent no-op.
     override fun commit(
         changes: List<Change>,

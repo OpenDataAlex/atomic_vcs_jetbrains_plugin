@@ -5,7 +5,6 @@ import com.intellij.openapi.vcs.VcsRootChecker
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 
-@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class AtomicVcsRootChecker : VcsRootChecker() {
     override fun getSupportedVcs(): VcsKey = AtomicVcs.getKey()
 
@@ -15,11 +14,7 @@ class AtomicVcsRootChecker : VcsRootChecker() {
         return File(file.path, AtomicVcs.DOT_DIR).isDirectory
     }
 
-    override fun isRoot(path: String): Boolean = File(path, AtomicVcs.DOT_DIR).isDirectory
-
     override fun validateRoot(file: VirtualFile): Boolean = isRoot(file)
-
-    override fun validateRoot(path: String): Boolean = isRoot(path)
 
     override fun isVcsDir(path: String): Boolean = AtomicVcs.DOT_DIR.equals(path, ignoreCase = true) ||
         path.endsWith("/${AtomicVcs.DOT_DIR}") ||

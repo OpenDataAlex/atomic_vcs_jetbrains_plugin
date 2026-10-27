@@ -4,6 +4,9 @@ import dev.atomic.core.cli.AtomicCli
 import dev.atomic.core.cli.AtomicCliImpl
 import dev.atomic.core.model.AtomicAttestation
 import dev.atomic.core.model.AtomicRecordResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
@@ -113,21 +116,29 @@ class AtomicAgentSessionTracker(
             ?: throw IllegalArgumentException("No active session found for ID: $sessionId")
         val root = repoPath ?: session.repoPath
 
-        // VFS Fallback check: If there are unrecorded modifications, record them now
-        val status = cli.status(root)
-        val unrecorded = (status.allDirtyFiles + session.touchedPaths).distinct()
-        val fallbackRecorded = unrecorded.isNotEmpty() && runCatching {
-            cli.add(root, unrecorded)
-            cli.record(root, "[Agent Fallback Turn] Auto-recorded untracked AI edits", unrecorded)
-        }.isSuccess
+        val fallbackRecorded: Boolean
+        val attestation: AtomicAttestation
+        try {
+            fallbackRecorded = attempt {
+                val status = cli.status(root)
+                val unrecorded = (status.allDirtyFiles + session.touchedPaths).distinct()
+                if (unrecorded.isEmpty()) {
+                    false
+                } else {
+                    cli.add(root, unrecorded)
+                    cli.record(root, "[Agent Fallback Turn] Auto-recorded untracked AI edits", unrecorded)
+                    true
+                }
+            }.getOrDefault(false)
 
-        // Attest draft view
-        val attestation = runCatching { cli.attest(root, session.draftView) }.getOrElse {
-            AtomicAttestation("attest-${session.draftView}-${System.currentTimeMillis()}", "")
+            attestation = attempt { cli.attest(root, session.draftView) }.getOrElse {
+                AtomicAttestation("attest-${session.draftView}-${System.currentTimeMillis()}", "")
+            }
+        } finally {
+            withContext(NonCancellable) {
+                attempt { cli.switchView(root, session.originalView) }
+            }
         }
-
-        // Switch back to original view; a failure here must not hide the session result
-        runCatching { cli.switchView(root, session.originalView) }
 
         return AgentSessionEndResult(
             sessionId = sessionId,
@@ -137,6 +148,24 @@ class AtomicAgentSessionTracker(
             fallbackRecorded = fallbackRecorded,
         )
     }
+
+    suspend fun endAllSessions(): List<AgentSessionEndResult> {
+        val results = mutableListOf<AgentSessionEndResult>()
+        for (sessionId in activeSessions.keys.toList()) {
+            val result = attempt { endSession(sessionId) }.getOrNull()
+            if (result != null) results.add(result)
+        }
+        return results
+    }
+
+    private suspend fun <T> attempt(block: suspend () -> T): Result<T> =
+        try {
+            Result.success(block())
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Result.failure(exception)
+        }
 
     companion object {
         val instance = AtomicAgentSessionTracker()

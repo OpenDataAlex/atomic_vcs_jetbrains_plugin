@@ -6,17 +6,23 @@ import com.intellij.vcs.VcsRepositoryInitializer
 import dev.atomic.core.cli.AtomicCliImpl
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.nio.file.Path
 
 class AtomicRepositoryInitializer : VcsRepositoryInitializer {
     override fun getSupportedVcs(): VcsKey = AtomicVcs.getKey()
 
     override fun initRepository(file: File) {
+        initRepository(file.toPath())
+    }
+
+    @Throws(VcsException::class)
+    fun initRepository(rootDir: Path) {
         val cli = AtomicCliImpl()
         val success = runBlocking {
-            cli.init(file.toPath())
+            cli.init(rootDir)
         }
         if (!success) {
-            throw VcsException("Failed to initialize Atomic repository in ${file.absolutePath}")
+            throw VcsException("Failed to initialize Atomic repository in $rootDir")
         }
     }
 }

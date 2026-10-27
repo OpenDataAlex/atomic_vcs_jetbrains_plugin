@@ -14,6 +14,7 @@ dependencies {
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlinx.coroutines.test)
+    testRuntimeOnly(libs.junit4)
     testRuntimeOnly(libs.junit.platform.launcher)
 
     intellijPlatform {

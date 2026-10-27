@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.bluefiredatasolutions.com.atomic-vcs-integration</id>
+    <id>com.opendataalex.com.atomic-vcs-integration</id>
     <name>Atomic VCS Support</name>
     <vendor url="https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin">Blue Fire Data Solutions</vendor>
 
@@ -28,6 +28,7 @@
 
         <statusBarWidgetFactory implementation="dev.atomic.vcs.ui.AtomicViewStatusBarWidgetFactory" id="AtomicViewStatusBarWidget"/>
         <notificationGroup id="Atomic VCS Notifications" displayType="BALLOON"/>
+        <toolWindow id="Atomic KG" anchor="right" factoryClass="dev.atomic.kg.KgToolWindowFactory"/>
 
         <postStartupActivity implementation="dev.atomic.vcs.AtomicVcsStartupActivity"/>
         <postStartupActivity implementation="dev.atomic.ai.mcp.McpRegistrationActivity"/>
@@ -36,6 +37,8 @@
     <applicationListeners>
         <listener class="dev.atomic.ai.agent.AtomicAiVfsListener"
                   topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+        <listener class="dev.atomic.ai.agent.AtomicPluginUnloadListener"
+                  topic="com.intellij.ide.plugins.DynamicPluginListener"/>
     </applicationListeners>
 
     <actions>
@@ -55,5 +58,11 @@
             <reference ref="Atomic.Unrecord"/>
             <add-to-group group-id="VcsGroups" anchor="last"/>
         </group>
+        <action id="Atomic.SearchVault"
+                class="dev.atomic.kg.KgSearchVaultAction"
+                text="Search Atomic Vault"
+                description="Search the Atomic knowledge graph for the current editor selection or file">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

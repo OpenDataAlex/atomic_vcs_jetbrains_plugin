@@ -163,6 +163,34 @@ data class AtomicQueryMatch(
     val score: Double? = null,
 )
 
+data class KgNode(
+    val id: String,
+    val type: String,
+    val name: String,
+    val path: Path? = null,
+    val line: Int? = null,
+)
+
+data class KgEdge(
+    val fromId: String,
+    val toId: String,
+    val relation: String,
+)
+
+data class KgSearchResult(val nodes: List<KgNode> = emptyList())
+
+data class KgNeighborsResult(
+    val centerId: String,
+    val nodes: List<KgNode> = emptyList(),
+    val edges: List<KgEdge> = emptyList(),
+)
+
+data class KgCodeHit(
+    val path: Path,
+    val line: Int? = null,
+    val snippet: String = "",
+)
+
 /**
  * Provenance metadata for AI-generated changes from `atomic provenance <hash>`.
  */

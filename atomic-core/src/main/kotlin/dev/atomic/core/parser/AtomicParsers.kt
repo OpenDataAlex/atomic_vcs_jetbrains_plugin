@@ -2,6 +2,12 @@ package dev.atomic.core.parser
 
 import dev.atomic.core.model.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import java.nio.file.Path
 
 private const val AUTHOR_PREFIX = "Author:"
@@ -527,6 +533,142 @@ object AtomicParsers {
             snippet = snippet.trim(),
         )
     }
+
+    // --------------------------------------------------------- vault query
+
+    fun parseVaultQuerySearch(output: String, repoRoot: Path): KgSearchResult {
+        val trimmed = output.trim()
+        val root = parseJsonElementOrNull(trimmed)
+        if (root != null) {
+            return KgSearchResult(parseKgNodes(root, repoRoot))
+        }
+
+        val nodeLine = Regex("""^\[([^]]+)]\s+(\S+)(?:\s+(.*))?$""")
+        val nodes = trimmed.lines().mapNotNull { line ->
+            val match = nodeLine.matchEntire(line.trim()) ?: return@mapNotNull null
+            val id = match.groupValues[2]
+            KgNode(
+                id = id,
+                type = match.groupValues[1],
+                name = match.groupValues[3].ifBlank { id },
+                path = pathFromNodeId(id, repoRoot),
+            )
+        }
+        return KgSearchResult(nodes)
+    }
+
+    fun parseVaultQueryEntities(output: String, repoRoot: Path): KgSearchResult = parseVaultQuerySearch(output, repoRoot)
+
+    fun parseVaultQueryCode(output: String, repoRoot: Path): List<KgCodeHit> {
+        val trimmed = output.trim()
+        val root = parseJsonElementOrNull(trimmed)
+        if (root != null) {
+            return findJsonArray(root, listOf("hits", "matches", "results", "items"))
+                .orEmpty()
+                .mapNotNull { parseKgCodeHit(it, repoRoot) }
+        }
+
+        val hitLine = Regex("""^(.+?):(\d+):(.*)$""")
+        return trimmed.lines().mapNotNull { line ->
+            val match = hitLine.matchEntire(line.trim()) ?: return@mapNotNull null
+            KgCodeHit(
+                path = repoRoot.resolve(match.groupValues[1]).normalize(),
+                line = match.groupValues[2].toIntOrNull(),
+                snippet = match.groupValues[3].trim(),
+            )
+        }
+    }
+
+    fun parseVaultQueryNeighbors(output: String, repoRoot: Path, centerId: String): KgNeighborsResult {
+        val root = parseJsonElementOrNull(output.trim()) ?: return KgNeighborsResult(
+            centerId = centerId,
+            nodes = parseVaultQuerySearch(output, repoRoot).nodes,
+        )
+        val responseCenter = root
+            .field("center_id", "centerId", "center", "node_id")
+            ?.stringValue()
+            ?: root.field("center")?.field("id", "node_id")?.stringValue()
+            ?: centerId
+        val nodes = parseKgNodes(root, repoRoot, listOf("nodes", "neighbors", "results", "items"))
+        val edges = findJsonArray(root, listOf("edges", "relationships", "links"))
+            .orEmpty()
+            .mapNotNull(::parseKgEdge)
+        return KgNeighborsResult(responseCenter, nodes, edges)
+    }
+
+    private fun parseKgNodes(
+        root: JsonElement,
+        repoRoot: Path,
+        arrayNames: List<String> = listOf("nodes", "results", "matches", "items", "hits", "entities"),
+    ): List<KgNode> {
+        val items = findJsonArray(root, arrayNames)?.toList()
+            ?: if (root.field("id", "node_id") != null) listOf(root) else emptyList()
+        return items.mapNotNull { item ->
+            val node = item.field("node", "entity")?.takeIf { it is JsonObject } ?: item
+            val id = node.field("id", "node_id")?.stringValue()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val type = node.field("type", "kind", "node_type")?.stringValue()
+                ?: id.substringBefore(":", "")
+            val name = node
+                .field("name", "title", "label", "summary", "description")
+                ?.stringValue()
+                ?.takeIf { it.isNotBlank() }
+                ?: id
+            val rawPath = node.field("path", "file", "file_path")?.stringValue()
+            val path = rawPath?.takeIf { it.isNotBlank() }?.let { repoRoot.resolve(it).normalize() } ?: pathFromNodeId(id, repoRoot)
+            val line = node.field("line", "line_number", "start_line")?.intValue()
+                ?: id.substringAfterLast(":", "").toIntOrNull()?.takeIf { id.startsWith("entity:") }
+            KgNode(id = id, type = type, name = name, path = path, line = line)
+        }
+    }
+
+    private fun parseKgCodeHit(item: JsonElement, repoRoot: Path): KgCodeHit? {
+        val hit = item.field("hit", "match")?.takeIf { it is JsonObject } ?: item
+        val rawPath = hit.field("path", "file", "file_path")?.stringValue() ?: return null
+        val path = repoRoot.resolve(rawPath).normalize()
+        return KgCodeHit(
+            path = path,
+            line = hit.field("line", "line_number")?.intValue(),
+            snippet = hit.field("snippet", "text", "content", "match")?.stringValue().orEmpty(),
+        )
+    }
+
+    private fun parseKgEdge(item: JsonElement): KgEdge? {
+        fun endpoint(vararg names: String): String? {
+            val value = item.field(*names) ?: return null
+            return value.stringValue() ?: value.field("id", "node_id")?.stringValue()
+        }
+
+        val from = endpoint("from", "from_id", "source") ?: return null
+        val to = endpoint("to", "to_id", "target") ?: return null
+        val relation = item.field("relation", "type", "kind", "label")?.stringValue().orEmpty()
+        return KgEdge(from, to, relation)
+    }
+
+    private fun parseJsonElementOrNull(text: String): JsonElement? =
+        if (isJsonObject(text) || isJsonArray(text)) decodeOrNull { json.parseToJsonElement(text) } else null
+
+    private fun findJsonArray(root: JsonElement, names: List<String>): JsonArray? {
+        if (root is JsonArray) return root
+        val obj = root as? JsonObject ?: return null
+        for (name in names) {
+            val value = obj[name] ?: continue
+            if (value is JsonArray) return value
+            findJsonArray(value, names)?.let { return it }
+        }
+        return obj.values.firstNotNullOfOrNull { findJsonArray(it, names) }
+    }
+
+    private fun JsonElement.field(vararg names: String): JsonElement? {
+        val obj = this as? JsonObject ?: return null
+        return names.firstNotNullOfOrNull { obj[it] }
+    }
+
+    private fun JsonElement?.stringValue(): String? = (this as? JsonPrimitive)?.contentOrNull
+
+    private fun JsonElement?.intValue(): Int? = (this as? JsonPrimitive)?.intOrNull
+
+    private fun pathFromNodeId(id: String, repoRoot: Path): Path? =
+        if (id.startsWith("file:")) repoRoot.resolve(id.removePrefix("file:")).normalize() else null
 
     // ------------------------------------------------------------ provenance
 

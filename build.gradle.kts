@@ -20,10 +20,12 @@ dependencies {
     implementation(project(":atomic-core"))
     implementation(project(":atomic-vcs"))
     implementation(project(":atomic-ai"))
+    implementation(project(":atomic-kg"))
 
     kover(project(":atomic-core"))
     kover(project(":atomic-vcs"))
     kover(project(":atomic-ai"))
+    kover(project(":atomic-kg"))
 
     intellijPlatform {
         intellijIdeaCommunity(libs.versions.intellij.ide.get())
