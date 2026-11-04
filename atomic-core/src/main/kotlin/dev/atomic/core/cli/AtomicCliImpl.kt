@@ -3,6 +3,7 @@ package dev.atomic.core.cli
 import dev.atomic.core.diff.RecordedContentReconstructor
 import dev.atomic.core.model.*
 import dev.atomic.core.parser.AtomicParsers
+import dev.atomic.core.parser.ScopeParsers
 import dev.atomic.core.process.DefaultProcessRunner
 import dev.atomic.core.process.ProcessResult
 import dev.atomic.core.process.ProcessRunner
@@ -271,6 +272,19 @@ class AtomicCliImpl(
         runCommand(repoPath, args)
     }
 
+    override suspend fun scopeSummary(repoPath: Path, fromView: String, toView: String): AtomicScopeSummary {
+        val base = listOf("diff", FLAG_NO_COLOR, "--from", fromView, "--to", toView)
+        val nameStatus = runCommand(repoPath, base + "--name-status").stdout
+        val stat = runCommand(repoPath, base + "--stat").stdout
+        return ScopeParsers.parseScope(fromView, toView, nameStatus, stat)
+    }
+
+    override suspend fun insertChange(repoPath: Path, changeHash: String, targetView: String): AtomicInsertResult {
+        // `--dry-run` is deliberately not used: in v0.20 it is not honoured for the positional form.
+        val result = runCommand(repoPath, listOf("insert", FLAG_NO_COLOR, "--view", targetView, changeHash))
+        return ScopeParsers.parseInsert(changeHash, targetView, result.stdout + "\n" + result.stderr)
+    }
+
     override suspend fun restore(repoPath: Path, paths: List<Path>) {
         if (paths.isEmpty()) return
         val args = mutableListOf("restore")
@@ -366,5 +380,20 @@ class AtomicCliImpl(
             listOfNotNull("attest", viewName),
         )
         return AtomicParsers.parseAttestation(output)
+    }
+
+    override suspend fun gitShimEnable(repoPath: Path): String = gitShim(repoPath, "enable", timeoutMillis = 120_000L)
+
+    override suspend fun gitShimDisable(repoPath: Path): String = gitShim(repoPath, "disable")
+
+    override suspend fun gitShimStatus(repoPath: Path): String = gitShim(repoPath, "status")
+
+    override suspend fun gitShimVerify(repoPath: Path): String = gitShim(repoPath, "verify")
+
+    override suspend fun gitShimReconcile(repoPath: Path): String = gitShim(repoPath, "reconcile", timeoutMillis = 300_000L)
+
+    private suspend fun gitShim(repoPath: Path, subcommand: String, timeoutMillis: Long = 30_000L): String {
+        val result = runCommand(repoPath, listOf("git", "shim", subcommand, FLAG_NO_COLOR), timeoutMillis = timeoutMillis)
+        return result.stdout.ifBlank { result.stderr }.trim()
     }
 }

@@ -265,7 +265,8 @@ class AtomicMcpServer(
                 val sessionId = args.required(SESSION_ID)
                 val result = sessionTracker.recordTurn(sessionId, args.required("message"), repoPath)
                 "Turn recorded for session '$sessionId' [hash: ${result.changeHash}]: ${result.message} " +
-                    "(${result.filesRecorded.size} files)"
+                    "(${result.filesRecorded.size} files)" +
+                    scopeReport(sessionTracker.scopeSummary(sessionId, repoPath))
             }
             "atomic_session_end" -> sessionEndText(repoPath, args.required(SESSION_ID))
             "atomic_attest" -> {
@@ -371,11 +372,26 @@ class AtomicMcpServer(
         return "AI Session '$sessionId' started on draft view '${result.draftView}' (parent: '${result.parentView}')."
     }
 
+    /** Scope report appended to turn replies so the agent (and reviewer) can spot drift early. */
+    private fun scopeReport(scope: AtomicScopeSummary?): String {
+        if (scope == null) return ""
+        return buildString {
+            append("\nScope vs '${scope.fromView}': ${scope.headline()}")
+            scope.files.forEach { append("\n  ${it.status.letter} ${it.path}") }
+            scope.warnings().forEach { append("\n  WARNING: $it") }
+            append("\nIf this is outside the intent's scope, stop and say so before continuing.")
+        }
+    }
+
     private suspend fun sessionEndText(repoPath: Path, sessionId: String): String {
+        val scope = sessionTracker.scopeSummary(sessionId, repoPath)
         val result = sessionTracker.endSession(sessionId, repoPath)
         val fallbackNote = if (result.fallbackRecorded) " (untracked modifications captured via VFS fallback)" else ""
         return "AI Session '$sessionId' concluded. View restored to '${result.restoredView}'. " +
-            "Attestation: ${result.attestation.hash}$fallbackNote"
+            "Attestation: ${result.attestation.hash}$fallbackNote" +
+            scopeReport(scope) +
+            "\nReview draft view '${result.draftView}' and promote it with VCS | Atomic | Insert Change into View... " +
+            "(do not insert into the target view yourself)."
     }
 
     private fun resolveRepoPath(customPath: String?): Path {

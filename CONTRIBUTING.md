@@ -94,14 +94,12 @@ The CLI's output formats change between versions, so parsers are the most fragil
 
 ## Code quality
 
-The project uses the Kotlin equivalents of ruff and mypy:
-
-| Python tool | Here | What it does | Command |
-| --- | --- | --- | --- |
-| `ruff format` / `ruff check` (style) | [Spotless](https://github.com/diffplug/spotless) + [ktlint](https://pinterest.github.io/ktlint/) | Formats and lints Kotlin code. Rules live in `.editorconfig`. | `./gradlew spotlessCheck` / `./gradlew spotlessApply` |
-| `ruff check` (bugs, complexity) | [detekt](https://detekt.dev) | Static analysis. Rules live in `config/detekt/detekt.yml`. Known legacy findings are recorded in each module's `detekt-baseline.xml`. | `./gradlew detekt` |
-| `mypy` | Kotlin compiler | Kotlin is statically typed. CI compiles with warnings as errors. | `./gradlew compileKotlin compileTestKotlin -PwarningsAsErrors=true` |
-| `pytest --cov` | JUnit 5 + [Kover](https://github.com/Kotlin/kotlinx-kover) | Unit tests and a minimum line-coverage check. | `./gradlew test koverVerify` |
+| Tool | What it does | Command |
+| --- | --- | --- |
+| [Spotless](https://github.com/diffplug/spotless) + [ktlint](https://pinterest.github.io/ktlint/) | Formats and lints Kotlin code. Rules live in `.editorconfig`. | `./gradlew spotlessCheck` / `./gradlew spotlessApply` |
+| [detekt](https://detekt.dev) | Static analysis. Rules live in `config/detekt/detekt.yml`. Known legacy findings are recorded in each module's `detekt-baseline.xml`. | `./gradlew detekt` |
+| Kotlin compiler | Kotlin is statically typed. CI compiles with warnings as errors. | `./gradlew compileKotlin compileTestKotlin -PwarningsAsErrors=true` |
+| JUnit 5 + [Kover](https://github.com/Kotlin/kotlinx-kover) | Unit tests and a minimum line-coverage check. | `./gradlew test koverVerify` |
 
 Run everything CI runs with `./gradlew spotlessCheck detekt test koverVerify`.
 
