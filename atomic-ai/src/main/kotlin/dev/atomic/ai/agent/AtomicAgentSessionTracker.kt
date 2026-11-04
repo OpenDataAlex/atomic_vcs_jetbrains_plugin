@@ -4,6 +4,7 @@ import dev.atomic.core.cli.AtomicCli
 import dev.atomic.core.cli.AtomicCliImpl
 import dev.atomic.core.model.AtomicAttestation
 import dev.atomic.core.model.AtomicRecordResult
+import dev.atomic.core.model.AtomicScopeSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -15,6 +16,8 @@ data class AgentSession(
     val repoPath: Path,
     val originalView: String,
     val draftView: String,
+    /** The view the draft was branched from; scope checks compare the draft against it. */
+    val baseView: String = originalView,
     var turnIndex: Int = 0,
     val touchedPaths: MutableSet<Path> = ConcurrentHashMap.newKeySet(),
 )
@@ -69,6 +72,7 @@ class AtomicAgentSessionTracker(
             repoPath = repoPath,
             originalView = originalView,
             draftView = draftView,
+            baseView = baseView,
         )
         activeSessions[sessionId] = session
 
@@ -106,6 +110,15 @@ class AtomicAgentSessionTracker(
         session.turnIndex++
         session.touchedPaths.clear()
         return recordResult
+    }
+
+    /**
+     * Summarizes what the session's draft view changed relative to the view it was branched from.
+     * Best effort: returns `null` if the session is unknown or the CLI cannot produce the comparison.
+     */
+    suspend fun scopeSummary(sessionId: String, repoPath: Path? = null): AtomicScopeSummary? {
+        val session = activeSessions[sessionId] ?: return null
+        return attempt { cli.scopeSummary(repoPath ?: session.repoPath, session.baseView, session.draftView) }.getOrNull()
     }
 
     suspend fun endSession(

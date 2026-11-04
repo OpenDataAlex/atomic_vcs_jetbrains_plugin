@@ -115,4 +115,38 @@ class AtomicMcpServerTest {
         assertTrue(text!!.contains("Active View: feature-login"))
         assertTrue(text.contains("M /repo/src/login.rs") || text.contains("login.rs"))
     }
+
+    @Test
+    fun testTurnEndReportsScopeAgainstBaseView() = runTest {
+        val mockRunner = MockProcessRunner()
+        // Order matters: the mock matches by substring and "status" is contained in "--name-status".
+        mockRunner.onCommand("--name-status", ProcessResult(0, "M  src/a.kt\nD  src/old.kt\n", ""))
+        mockRunner.onCommand("--stat", ProcessResult(0, " 2 files changed, 5 insertions(+), 9 deletions(-)\n", ""))
+        mockRunner.onCommand(
+            "status",
+            ProcessResult(0, """{"view":"dev","modified":["src/a.kt"],"added":[],"deleted":[],"untracked":[],"conflicted":[]}""", ""),
+        )
+        mockRunner.onCommand("record", ProcessResult(0, "[agent-s1 1/HASH1] [Turn 1] edit\n src/a.kt\n", ""))
+        val server = AtomicMcpServer(cli = AtomicCliImpl(processRunner = mockRunner), defaultRepoPath = repoRoot)
+
+        server.handleMessage(toolCall(1, "atomic_session_start", """{"sessionId":"s1"}"""))
+        val response = server.handleMessage(toolCall(2, "atomic_session_turn_end", """{"sessionId":"s1","message":"edit"}"""))
+
+        val text = Json
+            .parseToJsonElement(response!!)
+            .jsonObject["result"]!!
+            .jsonObject["content"]!!
+            .jsonArray[0]
+            .jsonObject["text"]!!
+            .jsonPrimitive.content
+        assertTrue(text.contains("Scope vs 'dev': 2 files changed (+5 / -9)"), text)
+        assertTrue(text.contains("D src/old.kt"), text)
+        assertTrue(text.contains("WARNING: 1 deleted: src/old.kt"), text)
+        assertTrue(
+            mockRunner.recordedCommands.any { it.containsAll(listOf("diff", "--from", "dev", "--to", "agent-s1", "--name-status")) },
+        )
+    }
+
+    private fun toolCall(id: Int, name: String, arguments: String) =
+        """{"jsonrpc":"2.0","id":$id,"method":"tools/call","params":{"name":"$name","arguments":$arguments}}"""
 }

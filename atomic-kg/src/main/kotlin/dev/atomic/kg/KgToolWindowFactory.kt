@@ -31,7 +31,9 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
     private val cli = AtomicCliImpl()
     private val viewModel = KgViewModel(cli)
     private val searchPanel = KgSearchPanel(::search, ::navigate, ::focus)
-    private val graphCanvas = KgCanvas(::expandNode)
+    private val graphCanvas = KgCanvas(::expandNode, ::inspectNode)
+    private val detailsPanel = KgDetailsPanel(::navigate, ::focusRelated)
+    private var currentGraph = KgGraphSnapshot()
     private val refreshButton = JButton("Refresh")
     private val enrichButton = JButton("Enrich")
     private val fitGraphButton = JButton("Fit Graph")
@@ -44,8 +46,10 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
         toolbar.add(enrichButton)
         toolbar.add(fitGraphButton)
         add(toolbar, BorderLayout.NORTH)
-        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, searchPanel, graphCanvas)
-        splitPane.resizeWeight = 0.4
+        val leftPane = JSplitPane(JSplitPane.VERTICAL_SPLIT, searchPanel, detailsPanel)
+        leftPane.resizeWeight = 0.55
+        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPane, graphCanvas)
+        splitPane.resizeWeight = 0.32
         add(splitPane, BorderLayout.CENTER)
 
         refreshButton.addActionListener { checkRepository() }
@@ -77,7 +81,7 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
             if (isRepository) {
                 loadRoots(root)
             } else {
-                graphCanvas.updateGraph(viewModel.clearGraph())
+                showGraph(viewModel.clearGraph())
             }
         }
     }
@@ -93,7 +97,7 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
 
     private fun loadRoots(root: Path) {
         startTask("Loading Atomic knowledge graph roots", "Loading top-level nodes…", { viewModel.loadRoots(root) }) { graph ->
-            graphCanvas.updateGraph(graph)
+            showGraph(graph)
             searchPanel.showMessage(
                 if (graph.nodes.isEmpty()) {
                     "No top-level KG roots found. Run Enrich to populate the graph."
@@ -123,8 +127,8 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
         val root = project.basePath?.let(Path::of) ?: return
         if (!repositoryAvailable) return
         startTask("Expanding Atomic node", "Loading neighbors for ${node.name}…", { viewModel.focusNode(root, node) }) { graph ->
-            graphCanvas.updateGraph(graph)
-            searchPanel.showMessage("Expanded neighbors for ${node.name}.")
+            showGraph(graph, node.id)
+            searchPanel.showMessage("Expanded neighbors for ${node.name}. Inspect related nodes in the details pane.")
         }
     }
 
@@ -145,7 +149,7 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
             }
             searchPanel.setQuery(result.query, mode)
             searchPanel.showResults(result.items)
-            graphCanvas.updateGraph(result.graph)
+            showGraph(result.graph)
         }
     }
 
@@ -153,9 +157,23 @@ internal class KgToolWindowPanel(private val project: Project) : JPanel(BorderLa
         val root = project.basePath?.let(Path::of) ?: return
         if (!repositoryAvailable || isBusy) return
         startTask("Expanding Atomic node", "Loading node neighbors…", { viewModel.focusNode(root, nodeId) }) { graph ->
-            graphCanvas.updateGraph(graph)
-            searchPanel.showMessage("Node neighbors loaded.")
+            showGraph(graph, nodeId)
+            searchPanel.showMessage("Node neighbors loaded. Related nodes are listed in the details pane.")
         }
+    }
+
+    private fun focusRelated(related: KgRelatedNode) {
+        focus(related.node)
+    }
+
+    private fun inspectNode(nodeId: String) {
+        detailsPanel.showDetails(KgNodeDetails.from(currentGraph, nodeId))
+    }
+
+    private fun showGraph(graph: KgGraphSnapshot, selectedId: String? = graph.focusId) {
+        currentGraph = graph
+        graphCanvas.updateGraph(graph)
+        detailsPanel.showDetails(KgNodeDetails.from(graph, selectedId))
     }
 
     private fun navigate(item: KgSearchItem) {

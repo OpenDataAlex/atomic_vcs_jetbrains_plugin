@@ -23,6 +23,10 @@ First development version (`1.0.0-SNAPSHOT`). Developed and tested against `atom
 - AI provenance in the **Log** tab: agent, vendor, model, tool, session and turn, tokens, cost, goal and the agent's steps.
 - MCP server for AI assistants, with automatic registration for AI Assistant (`.idea/llm.mcpServers.xml`) and Junie (`.junie/mcp.json`). It also includes AI agent session tracking and optional draft-view isolation of agent turns.
 - A settings page under **Settings | Version Control | Atomic**: executable path with test and auto-detect, default parent view, MCP registration and agent session isolation.
+- Git shim actions under **VCS | Atomic** (`atomic git shim enable|status|verify|reconcile|disable`) for colocated Git + Atomic working copies.
+- **Insert Change into View...** (VCS | Atomic menu and Log tab context menu): promotes a reviewed change with `atomic insert --view <target> <hash>`. `--dry-run` is not used because the CLI does not honour it for this form.
+- Scope check for agent sessions: `atomic_session_turn_end` and `atomic_session_end` report the files changed against the parent view, with warnings for deletions, renames and large edits.
+- Agent guide (`.atomic/jetbrains-agent.md`) and README describe the intent-first, scope-checked, reviewer-promotes workflow from the Atomic guide on reducing agent rework.
 - Unit tests for the CLI wrapper, parsers, diff reconstruction, provenance formatting, process runner, exceptions and the record flow.
 - Code quality tooling: Spotless with ktlint, detekt with per-module baselines, Kotlin compiler warnings as errors in CI (`-PwarningsAsErrors=true`), Kover coverage with a minimum line-coverage check and a GitHub Actions workflow.
 - `README.md`, `CONTRIBUTING.md` and this changelog.

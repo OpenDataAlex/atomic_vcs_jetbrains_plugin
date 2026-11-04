@@ -66,6 +66,17 @@ interface AtomicCli {
     suspend fun unrecord(repoPath: Path, changeHash: String? = null)
 
     /**
+     * Summarizes what [toView] changed relative to [fromView] (file list with statuses and line totals).
+     */
+    suspend fun scopeSummary(repoPath: Path, fromView: String, toView: String): AtomicScopeSummary
+
+    /**
+     * Promotes ([changeHash]) into [targetView] (`atomic insert --view <target> <hash>`).
+     * Does not touch the working copy view; [targetView] is passed explicitly.
+     */
+    suspend fun insertChange(repoPath: Path, changeHash: String, targetView: String): AtomicInsertResult
+
+    /**
      * Restores/reverts working copy files to their recorded state.
      */
     suspend fun restore(repoPath: Path, paths: List<Path>)
@@ -124,4 +135,19 @@ interface AtomicCli {
      * Attests view/session with an attestation hash.
      */
     suspend fun attest(repoPath: Path, viewName: String? = null): AtomicAttestation
+
+    /** Enables the colocated Git shim (`atomic git shim enable`). */
+    suspend fun gitShimEnable(repoPath: Path): String
+
+    /** Disables the Git shim (`atomic git shim disable`). */
+    suspend fun gitShimDisable(repoPath: Path): String
+
+    /** Reports Git/Atomic shim status (`atomic git shim status`). */
+    suspend fun gitShimStatus(repoPath: Path): String
+
+    /** Read-only comparison of Git HEAD and the current Atomic view. */
+    suspend fun gitShimVerify(repoPath: Path): String
+
+    /** Imports Git HEAD, verifies it, and records shim metadata. */
+    suspend fun gitShimReconcile(repoPath: Path): String
 }

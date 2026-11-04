@@ -389,3 +389,69 @@ data class JsonAttestationDto(
     val signature: String? = null,
     val status: String = "verified",
 )
+
+/** Status letter of a file in a scope summary (`M`odified, `A`dded, `D`eleted, `R`enamed, other). */
+enum class ScopeFileStatus(val letter: Char) {
+    MODIFIED('M'),
+    ADDED('A'),
+    DELETED('D'),
+    RENAMED('R'),
+    OTHER('?'),
+    ;
+
+    companion object {
+        fun fromLetter(letter: Char): ScopeFileStatus = entries.firstOrNull { it.letter == letter } ?: OTHER
+    }
+}
+
+data class ScopeFile(
+    val status: ScopeFileStatus,
+    val path: String,
+)
+
+/**
+ * Summary of what a view changed relative to another view (`atomic diff --from X --to Y --stat/--name-status`).
+ * Used for the post-turn "scope check" of agent sessions.
+ */
+data class AtomicScopeSummary(
+    val fromView: String,
+    val toView: String,
+    val files: List<ScopeFile> = emptyList(),
+    val insertions: Int = 0,
+    val deletions: Int = 0,
+) {
+    val isEmpty: Boolean get() = files.isEmpty()
+    val added: List<ScopeFile> get() = files.filter { it.status == ScopeFileStatus.ADDED }
+    val deleted: List<ScopeFile> get() = files.filter { it.status == ScopeFileStatus.DELETED }
+    val renamed: List<ScopeFile> get() = files.filter { it.status == ScopeFileStatus.RENAMED }
+
+    /** One-line description, e.g. `3 files changed (+12 / -4)`. */
+    fun headline(): String =
+        if (isEmpty) {
+            "No changes between '$fromView' and '$toView'"
+        } else {
+            "${files.size} file${if (files.size == 1) "" else "s"} changed (+$insertions / -$deletions)"
+        }
+
+    /** Human-readable review hints for risky scope changes (deletions, renames, large edits). */
+    fun warnings(largeChangeThreshold: Int = LARGE_CHANGE_LINES): List<String> =
+        buildList {
+            if (deleted.isNotEmpty()) add("${deleted.size} deleted: ${deleted.joinToString { it.path }}")
+            if (renamed.isNotEmpty()) add("${renamed.size} renamed: ${renamed.joinToString { it.path }}")
+            if (insertions + deletions >= largeChangeThreshold) add("Large change: ${insertions + deletions} lines touched")
+        }
+
+    companion object {
+        const val LARGE_CHANGE_LINES = 500
+    }
+}
+
+/** Result of promoting a change into a view with `atomic insert`. */
+data class AtomicInsertResult(
+    val changeHash: String,
+    val targetView: String,
+    /** `false` when Atomic reported that nothing was inserted (typically: the view already has the change). */
+    val inserted: Boolean,
+    val newState: String? = null,
+    val rawOutput: String = "",
+)

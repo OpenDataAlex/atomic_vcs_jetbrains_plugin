@@ -103,14 +103,12 @@ class KgGraphState(
     private val nodes = linkedMapOf<String, KgNode>()
     private val edges = linkedSetOf<KgEdge>()
     private val rootIds = linkedSetOf<String>()
-    private val expandedIds = mutableSetOf<String>()
     private var focusId: String? = null
 
     fun setRoots(roots: List<KgNode>): KgGraphSnapshot {
         nodes.clear()
         edges.clear()
         rootIds.clear()
-        expandedIds.clear()
         focusId = null
         roots.distinctBy(KgNode::id).take(minOf(maxRoots, maxVisibleNodes)).forEach { root ->
             nodes[root.id] = root
@@ -125,7 +123,7 @@ class KgGraphState(
         return snapshot()
     }
 
-    fun canExpand(nodeId: String): Boolean = nodeId in nodes && nodeId !in expandedIds
+    fun canExpand(nodeId: String): Boolean = nodeId in nodes
 
     fun node(nodeId: String): KgNode? = nodes[nodeId]
 
@@ -134,7 +132,6 @@ class KgGraphState(
         neighbors.edges
             .filter { it.fromId in nodes && it.toId in nodes }
             .forEach(edges::add)
-        expandedIds.add(neighbors.centerId)
         return snapshot()
     }
 

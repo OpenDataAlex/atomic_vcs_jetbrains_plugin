@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>com.opendataalex.com.atomic-vcs-integration</id>
+    <id>com.bluefiredatasolutions.com.atomic-vcs-integration</id>
     <name>Atomic VCS Support</name>
-    <vendor url="https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin">Blue Fire Data Solutions</vendor>
+    <vendor url="https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin">OpenDataAlex</vendor>
 
     <description><![CDATA[
     Adds support for the <a href="https://docs.atomic.dev">Atomic</a> version control system to JetBrains IDEs.<br>
@@ -25,6 +25,13 @@
                 instance="dev.atomic.vcs.settings.AtomicSettingsConfigurable"
                 id="dev.atomic.vcs.settings.AtomicSettingsConfigurable"
                 displayName="Atomic"/>
+
+        <projectConfigurable
+                parentId="project.propVCSSupport.Mappings"
+                groupWeight="-490"
+                instance="dev.atomic.ai.agent.AtomicAgentIntegrationsConfigurable"
+                id="dev.atomic.ai.agent.AtomicAgentIntegrationsConfigurable"
+                displayName="Atomic Agent Integrations"/>
 
         <statusBarWidgetFactory implementation="dev.atomic.vcs.ui.AtomicViewStatusBarWidgetFactory" id="AtomicViewStatusBarWidget"/>
         <notificationGroup id="Atomic VCS Notifications" displayType="BALLOON"/>
@@ -51,11 +58,37 @@
         <action id="Atomic.Record" class="dev.atomic.vcs.actions.AtomicRecordAction" text="Record Changes..." description="Record the selected changes as an Atomic change"/>
         <action id="Atomic.Unrecord" class="dev.atomic.vcs.actions.AtomicUnrecordAction" text="Unrecord Latest Change..." description="Unrecord the latest patch from the current view"/>
 
+        <action id="Atomic.InsertChange" class="dev.atomic.vcs.actions.AtomicInsertChangeAction" text="Insert Change into View..." description="Promote the selected change into another view after review">
+            <add-to-group group-id="Vcs.Log.ContextMenu" anchor="last"/>
+        </action>
+
         <group id="Atomic.Menu" class="dev.atomic.vcs.actions.AtomicMenuGroup" popup="true" text="Atomic" description="Atomic version control operations">
             <reference ref="Atomic.Refresh"/>
             <reference ref="Atomic.Record"/>
             <separator/>
             <reference ref="Atomic.Unrecord"/>
+            <reference ref="Atomic.InsertChange"/>
+            <separator/>
+            <action id="Atomic.GitShim.Enable"
+                    class="dev.atomic.vcs.actions.AtomicGitShimEnableAction"
+                    text="Enable Git Shim..."
+                    description="Enable the Atomic Git shim so Git and Atomic share this working copy"/>
+            <action id="Atomic.GitShim.Status"
+                    class="dev.atomic.vcs.actions.AtomicGitShimStatusAction"
+                    text="Git Shim Status"
+                    description="Show Atomic Git shim reconciliation status"/>
+            <action id="Atomic.GitShim.Verify"
+                    class="dev.atomic.vcs.actions.AtomicGitShimVerifyAction"
+                    text="Verify Git Shim"
+                    description="Compare Git HEAD with the current Atomic view"/>
+            <action id="Atomic.GitShim.Reconcile"
+                    class="dev.atomic.vcs.actions.AtomicGitShimReconcileAction"
+                    text="Reconcile Git Shim..."
+                    description="Import Git HEAD, verify it, and record shim metadata"/>
+            <action id="Atomic.GitShim.Disable"
+                    class="dev.atomic.vcs.actions.AtomicGitShimDisableAction"
+                    text="Disable Git Shim..."
+                    description="Disable the Atomic Git shim for this repository"/>
             <add-to-group group-id="VcsGroups" anchor="last"/>
         </group>
         <action id="Atomic.SearchVault"

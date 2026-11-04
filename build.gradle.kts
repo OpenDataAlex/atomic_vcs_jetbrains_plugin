@@ -34,7 +34,7 @@ dependencies {
 
 allprojects {
     group = "dev.atomic"
-    version = "1.0.0-SNAPSHOT"
+    version = "0.1.0"
 
     repositories {
         mavenCentral()
@@ -111,12 +111,12 @@ intellijPlatform {
     pluginConfiguration {
         id = "com.bluefiredatasolutions.com.atomic-vcs-integration"
         name = "Atomic VCS Support"
-        version = "1.0.0-SNAPSHOT"
+        version = "0.1.0"
         description = "Adds support for the Atomic version control system to JetBrains IDEs: file statuses, recording changes, " +
             "diffs, the change graph in the Log tab, AI-agent provenance and MCP integration. Requires the atomic CLI. " +
             "This is an independent community plugin and is not affiliated with or endorsed by atomic.dev."
         vendor {
-            name = "Blue Fire Data Solutions"
+            name = "OpenDataAlex"
             url = "https://github.com/OpenDataAlex/atomic_vcs_jetbrains_plugin"
         }
         ideaVersion {

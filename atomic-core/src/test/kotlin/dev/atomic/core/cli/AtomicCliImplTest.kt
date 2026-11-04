@@ -53,6 +53,43 @@ class AtomicCliImplTest {
     }
 
     @Test
+    fun testScopeSummaryUsesViewPairDiff() = runTest {
+        val mockRunner = MockProcessRunner()
+        mockRunner.onCommand("--name-status", ProcessResult(0, "M  b.txt\nA  z.txt\n", ""))
+        mockRunner.onCommand("--stat", ProcessResult(0, " 2 files changed, 2 insertions(+), 1 deletions(-)\n", ""))
+
+        val summary = AtomicCliImpl(processRunner = mockRunner).scopeSummary(repoRoot, "dev", "agent-x")
+
+        assertEquals(2, summary.files.size)
+        assertEquals(2, summary.insertions)
+        assertEquals(1, summary.deletions)
+        assertTrue(mockRunner.recordedCommands.all { it.containsAll(listOf("--from", "dev", "--to", "agent-x")) })
+    }
+
+    @Test
+    fun testInsertChangePassesTargetViewAndNeverDryRun() = runTest {
+        val mockRunner = MockProcessRunner()
+        mockRunner.onCommand("insert", ProcessResult(0, "✓ Inserted 1 change(s)\n  New state: S1\n", ""))
+
+        val result = AtomicCliImpl(processRunner = mockRunner).insertChange(repoRoot, "HASH1", "dev")
+
+        assertTrue(result.inserted)
+        val command = mockRunner.recordedCommands.single()
+        assertTrue(command.containsAll(listOf("insert", "--view", "dev", "HASH1")))
+        assertTrue(command.none { it == "--dry-run" || it == "-n" })
+    }
+
+    @Test
+    fun testInsertChangeFailureThrows() = runTest {
+        val mockRunner = MockProcessRunner()
+        mockRunner.onCommand("insert", ProcessResult(1, "", "atomic:NOT_FOUND: Change not found: NOPE"))
+
+        assertThrows(AtomicCommandException::class.java) {
+            kotlinx.coroutines.runBlocking { AtomicCliImpl(processRunner = mockRunner).insertChange(repoRoot, "NOPE", "dev") }
+        }
+    }
+
+    @Test
     fun testCommandTimeoutThrowsException() = runTest {
         val mockRunner = MockProcessRunner()
         mockRunner.defaultResponse = ProcessResult(
@@ -200,5 +237,39 @@ class AtomicCliImplTest {
         assertEquals("view:main", result.nodes.single().id)
         assertEquals(2, mockRunner.recordedCommands.size)
         assertTrue(mockRunner.recordedCommands.last().none { it == "--json" })
+    }
+
+    @Test
+    fun testGitShimCommands() = runTest {
+        val mockRunner = MockProcessRunner()
+        mockRunner.onCommand(
+            "git shim enable",
+            ProcessResult(exitCode = 0, stdout = "shim enabled", stderr = ""),
+        )
+        mockRunner.onCommand(
+            "git shim status",
+            ProcessResult(exitCode = 0, stdout = "enabled: true", stderr = ""),
+        )
+        mockRunner.onCommand(
+            "git shim verify",
+            ProcessResult(exitCode = 0, stdout = "heads agree", stderr = ""),
+        )
+        mockRunner.onCommand(
+            "git shim reconcile",
+            ProcessResult(exitCode = 0, stdout = "reconciled", stderr = ""),
+        )
+        mockRunner.onCommand(
+            "git shim disable",
+            ProcessResult(exitCode = 0, stdout = "shim disabled", stderr = ""),
+        )
+
+        val cli = AtomicCliImpl(processRunner = mockRunner)
+        assertEquals("shim enabled", cli.gitShimEnable(repoRoot))
+        assertEquals("enabled: true", cli.gitShimStatus(repoRoot))
+        assertEquals("heads agree", cli.gitShimVerify(repoRoot))
+        assertEquals("reconciled", cli.gitShimReconcile(repoRoot))
+        assertEquals("shim disabled", cli.gitShimDisable(repoRoot))
+        assertTrue(mockRunner.recordedCommands.any { it.containsAll(listOf("git", "shim", "enable", "--no-color")) })
+        assertTrue(mockRunner.recordedCommands.any { it.containsAll(listOf("git", "shim", "reconcile", "--no-color")) })
     }
 }
